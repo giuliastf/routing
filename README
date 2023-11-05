@@ -1,0 +1,68 @@
+IMBREA GIULIA STEFANIA 321CB
+TEMA 1 PCOM 04.2023 
+
+Pentru aceasta tema am reusit sa realizez doar partea cu IOV4 + cautare binara + ICMP
+
+struct route_table_entry next_hop_binary_search
+- functie pt a face cautarea binara in tabela de rutare
+- clasica schema pt cautare binara, ma folosesc de 3 indexes: start, end si mid
+- rezultatul functie este un route_table_entry, in cazul meu variabila temp setata initial doar la zerouri
+- in while in principal in functie de rezultatul returnat de formula pt a verifica prefix ul :
+(ip_addr & ntohl(rtable[mid].mask)) == ntohl(rtable[mid].prefix)
+setez noul mijloc mid si completez temp.
+- in caz ca temp este modificat inseamna ca am gasit o ruta=> marchez acest lucrul cu ajutorul pointerului este_null.
+
+
+int compare_binary(const void *a, const void *b) 
+- functie de comparare folosita ulterior in qsort pt a sorta tabela de rutare dupa masca si duoa prefix
+
+struct arp_entry search_mac_by_ip
+- functie ce returneaza arp_entry (adresa mac) dupa ip. 
+- din arp_table
+
+
+In main
+
+pentru IPV4: 
+- verific mai intai daca ether_type ul este 0x0800 (=ipv4)
+- imi declar o structura ip header
+- verific daca pachetul este pentru router ul nostru
+- verific daca protocolul folosit este de tip ICMP
+	- ICMP PART 1 ***
+- verific checksum ul pachetului si o compar cu cea primita mai devreme din headerul ip 
+- actualizare ttl + verifcare ip_hdr->ttl <= 0
+	- ICMP PART 2 ***
+- calculez cea next hop ul din tabela de routare folosind functia de cautare binara mentionata mai sus
+struct route_table_entry next = next_hop_binary_search(&este_null, rtable, rtable_size, ntohl(ip_hdr->daddr));
+- verific daca am gasit o ruta cu ajutorul variabilei este_null
+  daca aceasta a ramas setata pe 0 inseamna ca nu s-a gasit o cale =>
+	- ICMP PART 3 ***
+- recalculez checksum ul pentru ca am actualizat mai sus ttl ul
+- rescriere adrese <=>
+	adresa sursa devine adresa interfetei
+	adresa destinatie devine adresa mac a next hop ului(o gasesc folosind functia search_mac_by_ip)
+
+
+pentru ICMP:
+
+part1) la primirea unui Echo Request
+- router ul va raspunde cu un mesaj ICMP de tip Echo reply
+- asadar setez campurile din icmp_hdr specifice reply ului: type 0, code 0, etc.
+- construiesc structurile de ip hdr si eth hdr, inverses destinatia cu sursa (router ul "raspunde inapoi")
+
+part2) DESTINATION UNREACHABLE
+- mesaj icmp trimis pentru cazul in care nu s-a gasit ruta
+- aceeasi chestie, construiesc un icmp cu campurile setate specifice pt cazul acesta: de exemplu type = 3, code = 0
+- si aici o sa am nevoie de un ip hdr si un eth hdr
+
+part3) TIME EXCEEDED
+- mesaj icmp trimis daca pachetul a fost ignorat pentru ca campul ttl a ajuns la 0.
+- icmp specific cu type = 11, code = 0
+- sursa <-> destinatie
+- setez campurile din iphdr si ethhdr pentru a trimite mesajul inapoi
+
+
+PROBLEME INTAMPINATE:
+- local nu mi-a mers checker ul, cineva a postat o intrebare asemanatoare pe forum
+- am "verificat" cat de cat daca imi merge tema dand ping intre hosts si dupa incarcam de repetate ori pe moodle unde primeam punctajul de 67pct
+
